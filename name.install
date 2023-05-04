@@ -1,0 +1,184 @@
+<?php
+
+/**
+ * @file
+ * Standard installation functions for name.
+ */
+
+/**
+ * Implements hook_field_schema().
+ *
+ * There is no path backwards in Backdrop 7 when it comes to dropping columns or
+ * reducing the size of the columns (via coresponence mid 2010). So as a varchar
+ * is just the data + a terminator byte, all fields get all columns with vc(255).
+ */
+function name_field_schema($field) {
+  module_load_include('module', 'name');
+  $columns = array();
+  foreach (_name_translations() as $key => $title) {
+    $columns[$key] = array(
+      'type' => 'varchar',
+      'length' => 255,
+      'not null' => FALSE,
+    );
+  }
+  return array(
+    'columns' => $columns,
+    'indexes' => array(
+      'given' => array('given'),
+      'family' => array('family'),
+    ),
+  );
+}
+
+/**
+ * Implements hook_schema().
+ */
+function name_schema() {
+  $schema = array();
+  $schema['name_custom_format'] = array(
+    'fields' => array(
+      'ncfid' => array(
+        'description' => 'The primary identifier for a custom format.',
+        'type' => 'serial',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ),
+      'name' => array(
+        'description' => 'The name to identify the custom format to a user.',
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => TRUE,
+      ),
+      'machine_name' => array(
+        'description' => 'The machine name to identify the custom format to the system.',
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => TRUE,
+      ),
+      'format' => array(
+        'description' => 'The format string to apply to names.',
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => TRUE,
+      ),
+    ),
+    'primary key' => array('ncfid'),
+  );
+  return $schema;
+}
+
+/**
+ * Implements hook_install().
+ *
+ * Inserts some common name formats into the database.
+ */
+function name_install() {
+  name_install_default_formats();
+  // Dynamically generated variable data was detected on the following lines.
+  // /name/name.admin.inc line 212
+  // /name/name.admin.inc line 214
+}
+
+/**
+ * Implements hook_uninstall().
+ */
+function name_uninstall() {
+  config_clear('name.settings', 'name_settings');
+  config_clear('name.settings', 'name_user_preferred');
+  // There is no UI for this setting.
+  config_clear('name.settings', 'name_example_names');
+  config_clear('name.settings', 'name_inline_styles');
+  config_clear('name.settings', 'name_inline_styles_rtl');
+  config_clear('name.settings', 'name_element_wrapper');
+  config_clear('name.settings', 'name_component_required_marker');
+}
+
+// TODO The old hook_update_N functions cannot be applied to Backdrop.
+function name_update_6000() { }
+
+// TODO The old hook_update_N functions cannot be applied to Backdrop.
+function name_update_7000() { }
+
+// TODO The old hook_update_N functions cannot be applied to Backdrop.
+function name_update_7002() { }
+
+/**
+ * Inserts some common formats.
+ */
+function name_install_default_formats() {
+  $t = get_t();
+  $formats = array(
+    array(
+      'format' => '((((t+ig)+im)+if)+is)+jc',
+      'name' => $t('Full'),
+      'machine_name' => 'full',
+    ),
+    array(
+      'format' => 'g',
+      'name' => $t('Given'),
+      'machine_name' => 'given',
+    ),
+    array(
+      'format' => 'f',
+      'name' => $t('Family'),
+      'machine_name' => 'family',
+    ),
+    array(
+      'format' => 't+if',
+      'name' => $t('Title Family'),
+      'machine_name' => 'formal',
+    ),
+    array(
+      'format' => 'g+if',
+      'name' => $t('Given Family'),
+      'machine_name' => 'short_full',
+    ),
+  );
+
+  foreach ($formats as $format) {
+    db_insert('name_custom_format')
+      ->fields(array(
+      'name' => $format['name'],
+      'machine_name' => $format['machine_name'],
+      'format' => $format['format'],
+    ))
+      ->execute();
+  }
+}
+
+/**
+ * Implements hook_update_last_removed().
+ */
+function name_update_last_removed() {
+  return 7002;
+}
+
+/**
+ * Migrate name variables to config.
+ */
+function name_update_1000() {
+  $config = config('name.settings');
+  $config->set('name_user_preferred', update_variable_get('name_user_preferred', array()));
+  $config->set('name_example_names', update_variable_get('name_example_names', 'dynamic value in file /name/name.admin.inc line 212'));
+  $config->set('name_example_names_field_name', update_variable_get('name_example_names_field_name', 'dynamic variable in file /name/name.admin.inc line 214'));
+  $config->set('name_devel_generate_names', update_variable_get('name_devel_generate_names', '_name_devel_generate_name'));
+  $config->set('name_settings', update_variable_get('name_settings', array()));
+  $config->set('name_component_required_marker', update_variable_get('name_component_required_marker', '*'));
+  $config->set('name_field_part_overrides', update_variable_get('name_field_part_overrides', '0'));
+  $config->set('name_inline_styles_rtl', update_variable_get('name_inline_styles_rtl', 'float: right; margin-left: 1em;'));
+  $config->set('name_inline_styles', update_variable_get('name_inline_styles', 'float: left; margin-right: 1em;'));
+  $config->set('name_element_wrapper', update_variable_get('name_element_wrapper', '1'));
+  $config->save();
+
+  update_variable_del('name_user_preferred');
+  update_variable_del('name_example_names');
+  update_variable_del('name_example_names_field_name');
+  update_variable_del('name_devel_generate_names');
+  update_variable_del('name_settings');
+  update_variable_del('name_component_required_marker');
+  update_variable_del('name_field_part_overrides');
+  update_variable_del('name_inline_styles_rtl');
+  update_variable_del('name_inline_styles');
+  update_variable_del('name_element_wrapper');
+}
